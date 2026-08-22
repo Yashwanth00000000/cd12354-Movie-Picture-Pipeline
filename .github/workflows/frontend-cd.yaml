@@ -138,8 +138,9 @@ jobs:
         working-directory: starter/frontend/k8s
         run: |
           kustomize edit set image frontend=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          if aws eks describe-cluster --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}" >/dev/null 2>&1; then
-            echo "EKS cluster found. Updating kubeconfig and deploying..."
+          CLUSTER_STATUS=$(aws eks describe-cluster --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}" --query "cluster.status" --output text 2>/dev/null || echo "NOT_FOUND")
+          if [ "$CLUSTER_STATUS" = "ACTIVE" ]; then
+            echo "EKS cluster is ACTIVE. Updating kubeconfig and deploying..."
             aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
             kustomize build | kubectl apply -f -
             kubectl rollout status deployment/frontend --timeout=120s
@@ -148,7 +149,7 @@ jobs:
             echo "=== Kubernetes Resources (kubectl get all) ==="
             kubectl get all
           else
-            echo "EKS cluster ${{ secrets.EKS_CLUSTER_NAME }} not found in region ${{ secrets.AWS_REGION }}. Validating kustomize manifests..."
+            echo "EKS cluster ${{ secrets.EKS_CLUSTER_NAME }} is $CLUSTER_STATUS. Validating kustomize manifests..."
             kustomize build
             echo "Kustomize manifest successfully built and validated with image $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
             echo "=== Kubernetes Services Definition (k8s/service.yaml) ==="

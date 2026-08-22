@@ -124,24 +124,11 @@ jobs:
             aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
             
             echo "Ensuring worker node auth ConfigMap..."
-            cat <<EOF | kubectl apply -f - || true
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: aws-auth
-  namespace: kube-system
-data:
-  mapRoles: |
-    - rolearn: arn:aws:iam::149284058072:role/voclabs
-      username: system:node:{{EC2PrivateDNSName}}
-      groups:
-        - system:bootstrappers
-        - system:nodes
-EOF
+            printf "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: aws-auth\n  namespace: kube-system\ndata:\n  mapRoles: |\n    - rolearn: arn:aws:iam::149284058072:role/voclabs\n      username: system:node:{{EC2PrivateDNSName}}\n      groups:\n        - system:bootstrappers\n        - system:nodes\n" | kubectl apply -f - || true
 
             kustomize build | kubectl apply -f -
             echo "Waiting for rollout..."
-            kubectl rollout status deployment/backend --timeout=60s || true
+            kubectl rollout status deployment/backend --timeout=30s || true
             echo "=== Kubernetes Nodes (kubectl get nodes) ==="
             kubectl get nodes || true
             echo "=== Kubernetes Services (kubectl get svc -A) ==="

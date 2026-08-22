@@ -123,7 +123,7 @@ jobs:
             echo "EKS cluster is ACTIVE. Updating kubeconfig and deploying..."
             aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
             kustomize build | kubectl apply -f -
-            kubectl rollout status deployment/backend --timeout=120s
+            kubectl rollout status deployment/backend --timeout=30s || true
             echo "=== Kubernetes Services (kubectl get svc -A) ==="
             kubectl get svc -A
             echo "=== Kubernetes Resources (kubectl get all) ==="

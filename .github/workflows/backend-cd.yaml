@@ -124,15 +124,20 @@ jobs:
             echo "Ensuring worker node auth ConfigMap..."
             printf "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: aws-auth\n  namespace: kube-system\ndata:\n  mapRoles: |\n    - rolearn: arn:aws:iam::149284058072:role/voclabs\n      username: system:node:{{EC2PrivateDNSName}}\n      groups:\n        - system:bootstrappers\n        - system:nodes\n    - rolearn: arn:aws:iam::149284058072:role/EMR_EC2_DefaultRole\n      username: system:node:{{EC2PrivateDNSName}}\n      groups:\n        - system:bootstrappers\n        - system:nodes\n" | kubectl apply -f - || true
 
+            echo "=== Current aws-auth ConfigMap ==="
+            kubectl get configmap aws-auth -n kube-system -o yaml || true
+
             kustomize build | kubectl apply -f -
             echo "Waiting for rollout..."
-            kubectl rollout status deployment/backend --timeout=60s || true
+            kubectl rollout status deployment/backend --timeout=30s || true
             echo "=== Kubernetes Nodes (kubectl get nodes) ==="
             kubectl get nodes -o wide || true
             echo "=== Kubernetes Services (kubectl get svc -A) ==="
             kubectl get svc -A
             echo "=== Kubernetes Resources (kubectl get all) ==="
             kubectl get all
+            echo "=== Describe Pending Pods ==="
+            kubectl describe pods -l app=backend || true
           else
             echo "EKS cluster ${{ secrets.EKS_CLUSTER_NAME }} is $CLUSTER_STATUS. Validating kustomize manifests..."
             kustomize build

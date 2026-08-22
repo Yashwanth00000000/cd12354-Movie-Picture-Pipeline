@@ -122,8 +122,28 @@ jobs:
           if [ "$CLUSTER_STATUS" = "ACTIVE" ]; then
             echo "EKS cluster is ACTIVE. Updating kubeconfig and deploying..."
             aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ secrets.AWS_REGION }}"
+            
+            echo "Ensuring worker node auth ConfigMap..."
+            cat <<EOF | kubectl apply -f - || true
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::149284058072:role/voclabs
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+EOF
+
             kustomize build | kubectl apply -f -
-            kubectl rollout status deployment/backend --timeout=30s || true
+            echo "Waiting for rollout..."
+            kubectl rollout status deployment/backend --timeout=60s || true
+            echo "=== Kubernetes Nodes (kubectl get nodes) ==="
+            kubectl get nodes || true
             echo "=== Kubernetes Services (kubectl get svc -A) ==="
             kubectl get svc -A
             echo "=== Kubernetes Resources (kubectl get all) ==="
